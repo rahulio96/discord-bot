@@ -4,7 +4,16 @@ import { Client, GatewayIntentBits, ButtonBuilder, ButtonStyle, ActionRowBuilder
 
 dotenv.config();
 
+// Bot prompts the user with the following
 const INTRO_PROMPT = "Hi, are your ready to fill out your **Daily Standup** update?";
+const SNOOZE_PROMPT = "Ok, when would you like me to remind you?"
+
+// Intro button labels
+const YES_LABEL = "Yes, I'm ready";
+const SNOOZE_LABEL = "Snooze";
+const NO_LABEL = "No, skip";
+
+// Time that startup message will be sent
 const HOUR = "9";
 const MINUTE = "0";
 
@@ -20,20 +29,22 @@ const client = new Client({
 
 client.login(process.env.DISCORD_TOKEN);
 
-const yesBtn = new ButtonBuilder().setCustomId("yes").setLabel("Yes, I'm ready").setStyle(ButtonStyle.Primary);
-const snoozeBtn = new ButtonBuilder().setCustomId("snooze").setLabel("Snooze").setStyle(ButtonStyle.Secondary);
-const noBtn = new ButtonBuilder().setCustomId("no").setLabel("No, skip").setStyle(ButtonStyle.Secondary);
+// Intro buttons
+const yesBtn = new ButtonBuilder().setCustomId("yes").setLabel(YES_LABEL).setStyle(ButtonStyle.Primary);
+const snoozeBtn = new ButtonBuilder().setCustomId("snooze").setLabel(SNOOZE_LABEL).setStyle(ButtonStyle.Secondary);
+const noBtn = new ButtonBuilder().setCustomId("no").setLabel(NO_LABEL).setStyle(ButtonStyle.Secondary);
 
-const actionRow = new ActionRowBuilder().addComponents(yesBtn, snoozeBtn, noBtn);
+const introActionRow = new ActionRowBuilder().addComponents(yesBtn, snoozeBtn, noBtn);
 
-const replyToIntroPrompt = async ( interaction, text ) => {
-    await interaction.update({
-        content: `> ${text}`,
-        embeds: [
-            {
-                description: INTRO_PROMPT,
-            }
-        ],
+// Snooze buttons
+const snooze15 = new ButtonBuilder().setCustomId("15").setLabel("15 min").setStyle(ButtonStyle.Primary);
+
+const snoozeActionRow = new ActionRowBuilder().addComponents(snooze15);
+
+const buttonSelectResponse = async (interaction, selectedButtonText,  originalBotResponse) => {
+    interaction.update({
+        content: `> ${selectedButtonText}`,
+        embeds: [{ description: originalBotResponse }],
         components: [],
     });
 }
@@ -61,7 +72,7 @@ client.on("ready", async () => {
                     try {
                         member.send({
                             embeds: [{ description: INTRO_PROMPT }],
-                            components: [actionRow],
+                            components: [introActionRow],
                         });
                     } catch (error) {
                         console.log(`Unable to send standup to ${member.user.tag}: `, error);
@@ -85,15 +96,19 @@ client.on("interactionCreate", async (interaction) => {
     // Switch case depending on button pressed
     switch (interaction.customId) {
         case "yes":
-            replyToIntroPrompt(interaction, "Yes, I'm ready");
+            await buttonSelectResponse(interaction, YES_LABEL, INTRO_PROMPT);
             break;
 
         case "snooze":
-            replyToIntroPrompt(interaction, "Snooze");
+            await buttonSelectResponse(interaction, SNOOZE_LABEL, INTRO_PROMPT);
+            user.send({
+                content: SNOOZE_PROMPT,
+                components: [snoozeActionRow],
+            });
             break;
 
         case "no":
-            replyToIntroPrompt(interaction, "No, skip");
+            await buttonSelectResponse(interaction, NO_LABEL, INTRO_PROMPT);
             break;
     }
 });
