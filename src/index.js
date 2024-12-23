@@ -36,6 +36,14 @@ const noBtn = new ButtonBuilder().setCustomId("no").setLabel(NO_LABEL).setStyle(
 
 const introActionRow = new ActionRowBuilder().addComponents(yesBtn, snoozeBtn, noBtn);
 
+// Message with embeded message and button(s)
+function message(prompt, actionRow) {
+    return {
+        embeds: [{ description: prompt }],
+        components: [actionRow],
+    }
+}
+
 // Snooze buttons
 const snooze15 = new ButtonBuilder().setCustomId("15").setLabel("15 min").setStyle(ButtonStyle.Primary);
 
@@ -70,10 +78,7 @@ client.on("ready", async () => {
             members.forEach(member => {
                 if (!member.user.bot) {
                     try {
-                        member.send({
-                            embeds: [{ description: INTRO_PROMPT }],
-                            components: [introActionRow],
-                        });
+                        member.send(message(INTRO_PROMPT, introActionRow));
                     } catch (error) {
                         console.log(`Unable to send standup to ${member.user.tag}: `, error);
                     }
@@ -101,14 +106,26 @@ client.on("interactionCreate", async (interaction) => {
 
         case "snooze":
             await buttonSelectResponse(interaction, SNOOZE_LABEL, INTRO_PROMPT);
-            user.send({
-                content: SNOOZE_PROMPT,
-                components: [snoozeActionRow],
-            });
+            await user.send(message(SNOOZE_PROMPT, snoozeActionRow));
             break;
 
         case "no":
             await buttonSelectResponse(interaction, NO_LABEL, INTRO_PROMPT);
+            break;
+
+        case "15":
+            await buttonSelectResponse(interaction, "15 min", SNOOZE_PROMPT);
+            await user.send({
+                content: "Reminding you in 15 minutes!",
+            });
+
+            schedule.scheduleJob(new Date(Date.now() + 15 * 60 * 1000), async () => {
+                try {
+                    await user.send(message(INTRO_PROMPT, introActionRow));
+                } catch (error) {
+                    console.error(`Failed to send reminder to ${user.displayName}:`, error);
+                }
+            });
             break;
     }
 });
