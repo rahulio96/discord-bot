@@ -45,16 +45,82 @@ function message(prompt, actionRow) {
 }
 
 // Snooze buttons
-const snooze15 = new ButtonBuilder().setCustomId("15").setLabel("15 min").setStyle(ButtonStyle.Primary);
+const snooze15min = new ButtonBuilder().setCustomId("15").setLabel("15 min").setStyle(ButtonStyle.Secondary);
+const snooze30min = new ButtonBuilder().setCustomId("30").setLabel("30 min").setStyle(ButtonStyle.Secondary);
+const snooze1hr = new ButtonBuilder().setCustomId("1").setLabel("1 hour").setStyle(ButtonStyle.Secondary);
+const snoozeCustom = new ButtonBuilder().setCustomId("custom").setLabel("Custom").setStyle(ButtonStyle.Secondary);
 
-const snoozeActionRow = new ActionRowBuilder().addComponents(snooze15);
+const snoozeActionRow = new ActionRowBuilder().addComponents(snooze15min, snooze30min, snooze1hr, snoozeCustom);
 
 const buttonSelectResponse = async (interaction, selectedButtonText,  originalBotResponse) => {
-    interaction.update({
+    await interaction.update({
         content: `> ${selectedButtonText}`,
         embeds: [{ description: originalBotResponse }],
         components: [],
     });
+}
+
+const handleSnooze = async(interaction, snoozeTime, buttonLabel, isHours) => {
+    await buttonSelectResponse(interaction, buttonLabel, SNOOZE_PROMPT);
+
+    let timeUnit = "minutes";
+    const displayTime = snoozeTime;
+
+    // no custom amount and there's only the option for 1 hour
+    if (isHours) {
+        timeUnit = "hour";
+        snoozeTime = snoozeTime * 60;
+    }
+    
+    await interaction.user.send({
+        content: `Reminding you in ${displayTime} ${timeUnit}!`,
+    });
+
+    schedule.scheduleJob(new Date(Date.now() + snoozeTime * 60 * 1000), async () => {
+        try {
+            await interaction.user.send(message(INTRO_PROMPT, introActionRow));
+        } catch (error) {
+            console.error(`Failed to send reminder to ${user.displayName}:`, error);
+        }
+    });
+}
+
+const snoozeFilter = response => {
+    // ignore if the response isn't a number
+    return !isNaN(parseFloat(response)) && isFinite(response);
+} 
+
+const handleCustomSnooze = async (interaction, buttonLabel) => {
+    await buttonSelectResponse(interaction, buttonLabel, SNOOZE_PROMPT);
+    await interaction.user.send({embeds: [{ description: "How many hours would you like to snooze?" }]});
+
+    try {
+        // await one valid message from the user
+        const collected = await interaction.channel.awaitMessages({
+            filter: snoozeFilter,
+            max: 1,
+            time: 30_000,
+            errors: ['time'],
+        });
+
+        const snoozeTime = parseFloat(collected.first().content);
+        
+        // prompt the user again after custom hours
+        schedule.scheduleJob(new Date(Date.now() + snoozeTime * 60 * 60 * 1000), async () => {
+            await interaction.user.send(message(INTRO_PROMPT, introActionRow));
+        });
+
+        // confirmation message
+        await interaction.user.send({
+            content: `Reminding you in ${snoozeTime} ${snoozeTime === 1 ? "hour" : "hours"}`,
+        });
+
+    } catch (error) {
+        console.log(error);
+        await interaction.user.send({
+            content: "Error has occurred"
+        })
+    }
 }
 
 client.on("ready", async () => {
@@ -96,17 +162,16 @@ client.on("interactionCreate", async (interaction) => {
         return;
     }
 
-    const user = interaction.user;
+    const id = interaction.customId;
 
-    // Switch case depending on button pressed
-    switch (interaction.customId) {
+    switch (id) {
         case "yes":
             await buttonSelectResponse(interaction, YES_LABEL, INTRO_PROMPT);
             break;
 
         case "snooze":
             await buttonSelectResponse(interaction, SNOOZE_LABEL, INTRO_PROMPT);
-            await user.send(message(SNOOZE_PROMPT, snoozeActionRow));
+            await interaction.user.send(message(SNOOZE_PROMPT, snoozeActionRow));
             break;
 
         case "no":
@@ -114,18 +179,19 @@ client.on("interactionCreate", async (interaction) => {
             break;
 
         case "15":
-            await buttonSelectResponse(interaction, "15 min", SNOOZE_PROMPT);
-            await user.send({
-                content: "Reminding you in 15 minutes!",
-            });
-
-            schedule.scheduleJob(new Date(Date.now() + 15 * 60 * 1000), async () => {
-                try {
-                    await user.send(message(INTRO_PROMPT, introActionRow));
-                } catch (error) {
-                    console.error(`Failed to send reminder to ${user.displayName}:`, error);
-                }
-            });
+            await handleSnooze(interaction, 15, "15 min", false);
             break;
+
+        case "30":
+            await handleSnooze(interaction, 30, "30 min", false);
+            break;
+
+        case "1":
+            await handleSnooze(interaction, 1, "1 hour", true);
+            break;
+
+        case "custom":
+            await handleCustomSnooze(interaction, "Custom");
+            break;         
     }
 });
