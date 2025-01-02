@@ -92,7 +92,7 @@ const snoozeFilter = response => {
 
 const handleCustomSnooze = async (interaction, buttonLabel) => {
     await buttonSelectResponse(interaction, buttonLabel, SNOOZE_PROMPT);
-    await interaction.user.send({embeds: [{ description: "How many hours would you like to snooze?" }]});
+    await interaction.user.send({embeds: [{ description: "Please enter the number of hours you would like to snooze:" }] });
 
     try {
         // await one valid message from the user
@@ -117,10 +117,50 @@ const handleCustomSnooze = async (interaction, buttonLabel) => {
 
     } catch (error) {
         console.log(error);
-        await interaction.user.send({
-            content: "Error has occurred"
-        })
     }
+}
+
+const handleUserStandup = async (interaction) => {
+    const messages = await interaction.channel.messages.fetch({ limit: 1 });
+    const botMessage = messages.find(msg => msg.author.bot);
+
+    const prevDayPlan = "Daily Standup check-in for Sunday, November 24, 2024. Type `cancel` to stop or type `back` to return." +
+        "\n\nYour previous day plan (Saturday, November 23, 2024):" +
+        "\nPlaceholder" +
+        "\n\nWhat did you complete in the previous day?";
+
+    try {
+        await interaction.user.send({
+            content: prevDayPlan,
+            ...(botMessage && { reply: { messageReference: botMessage.id } }),
+        });
+
+        const work = await interaction.channel.awaitMessages({
+            max: 1,
+            time: 30_000,
+            errors: ['time'],
+        });
+
+        await interaction.user.send({content: "Great, what are you planning on working on today?"});
+
+        const plan = await interaction.channel.awaitMessages({
+            max: 1,
+            time: 30_000,
+            errors: ['time'],
+        });
+
+        await interaction.user.send({content: "Got it, do you have any blockers? If not, please say: `no`."});
+
+        const blockers = await interaction.channel.awaitMessages({
+            max: 1,
+            time: 30_000,
+            errors: ['time'],
+        });
+
+        await interaction.user.send({content: "Thanks for completing your standup, have a nice day!"});
+    } catch (error) {
+        console.log(error);
+    }   
 }
 
 client.on("ready", async () => {
@@ -167,6 +207,7 @@ client.on("interactionCreate", async (interaction) => {
     switch (id) {
         case "yes":
             await buttonSelectResponse(interaction, YES_LABEL, INTRO_PROMPT);
+            await handleUserStandup(interaction);
             break;
 
         case "snooze":
@@ -176,6 +217,9 @@ client.on("interactionCreate", async (interaction) => {
 
         case "no":
             await buttonSelectResponse(interaction, NO_LABEL, INTRO_PROMPT);
+            await interaction.user.send({
+                content: `Skipping today's standup, see you tomorrow!`,
+            });
             break;
 
         case "15":
