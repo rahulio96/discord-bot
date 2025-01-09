@@ -1,8 +1,11 @@
 import dotenv from 'dotenv';
 import schedule from 'node-schedule';
 import { Client, GatewayIntentBits, ButtonBuilder, ButtonStyle, ActionRowBuilder } from 'discord.js';
+import Database from "better-sqlite3";
 
 dotenv.config();
+
+const db = new Database("./data/standups.db");
 
 // Bot prompts the user with the following
 const INTRO_PROMPT = "Hi, are your ready to fill out your **Daily Standup** update?";
@@ -123,10 +126,16 @@ const handleCustomSnooze = async (interaction, buttonLabel) => {
 const handleUserStandup = async (interaction) => {
     const messages = await interaction.channel.messages.fetch({ limit: 1 });
     const botMessage = messages.find(msg => msg.author.bot);
+    const userPlan = await db.prepare(
+        `SELECT * FROM standup 
+        WHERE user_id = ? 
+        ORDER BY created_at 
+        DESC LIMIT 1`
+    ).get(interaction.user.id);
 
     const prevDayPlan = "Daily Standup check-in for Sunday, November 24, 2024. Type `cancel` to stop or type `back` to return." +
-        "\n\nYour previous day plan (Saturday, November 23, 2024):" +
-        "\nPlaceholder" +
+        `\n\nYour previous day plan (${userPlan.created_at}):` +
+        `\n${userPlan.plan}` +
         "\n\nWhat did you complete in the previous day?";
 
     try {
@@ -156,6 +165,11 @@ const handleUserStandup = async (interaction) => {
             time: 30_000,
             errors: ['time'],
         });
+        
+
+        db.prepare(
+            `INSERT INTO standup (user_id, work, plan, blockers) VALUES (?, ?, ?, ?)`
+        ).run(interaction.user.id, work.first().content, plan.first().content, blockers.first().content);
 
         await interaction.user.send({content: "Thanks for completing your standup, have a nice day!"});
     } catch (error) {
@@ -165,6 +179,28 @@ const handleUserStandup = async (interaction) => {
 
 client.on("ready", async () => {
     console.log("Ready for action!");
+
+    db.prepare(
+        `CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            username TEXT NOT NULL,
+            join_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`
+    ).run();
+
+    db.prepare(
+        `CREATE TABLE IF NOT EXISTS standup (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            work TEXT NOT NULL,
+            plan TEXT NOT NULL,
+            blockers TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )`
+    ).run();
+
+    console.log('Connected to the database!');
 
     // schedule.scheduleJob(`${MINUTE} ${HOUR} * * *`, async () => {
         console.log("Sending standup messages...");
@@ -183,6 +219,11 @@ client.on("ready", async () => {
             // Send direct message to all users
             members.forEach(member => {
                 if (!member.user.bot) {
+                    // Add user to db
+                    db.prepare(
+                        `INSERT OR IGNORE INTO users (id, username) VALUES (?, ?)`
+                    ).run(member.user.id, member.user.globalName);
+
                     try {
                         member.send(message(INTRO_PROMPT, introActionRow));
                     } catch (error) {
