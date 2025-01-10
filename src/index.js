@@ -32,6 +32,13 @@ const client = new Client({
 
 client.login(process.env.DISCORD_TOKEN);
 
+const formatDate = new Intl.DateTimeFormat('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+});
+
 // Intro buttons
 const yesBtn = new ButtonBuilder().setCustomId("yes").setLabel(YES_LABEL).setStyle(ButtonStyle.Primary);
 const snoozeBtn = new ButtonBuilder().setCustomId("snooze").setLabel(SNOOZE_LABEL).setStyle(ButtonStyle.Secondary);
@@ -133,10 +140,19 @@ const handleUserStandup = async (interaction) => {
         DESC LIMIT 1`
     ).get(interaction.user.id);
 
-    const prevDayPlan = "Daily Standup check-in for Sunday, November 24, 2024. Type `cancel` to stop or type `back` to return." +
-        `\n\nYour previous day plan (${userPlan.created_at}):` +
+    const date = new Date();
+    
+    let prevDayPlan; 
+
+    if (userPlan) {
+        const prevDate = new Date(userPlan.created_at);
+        prevDayPlan = `Daily Standup check-in for ${formatDate.format(date)}` +
+        `\n\nYour previous day plan (${formatDate.format(prevDate)}):` +
         `\n${userPlan.plan}` +
         "\n\nWhat did you complete in the previous day?";
+    } else {
+        prevDayPlan = "Welcome to your first standup! What are you planning on working on today?";
+    }
 
     try {
         await interaction.user.send({
@@ -144,20 +160,24 @@ const handleUserStandup = async (interaction) => {
             ...(botMessage && { reply: { messageReference: botMessage.id } }),
         });
 
-        const work = await interaction.channel.awaitMessages({
-            max: 1,
-            time: 30_000,
-            errors: ['time'],
-        });
+        let work = "";
 
-        await interaction.user.send({content: "Great, what are you planning on working on today?"});
+        if (userPlan) {
+            work = await interaction.channel.awaitMessages({
+                max: 1,
+                time: 30_000,
+                errors: ['time'],
+            });
+            await interaction.user.send({content: "Great, what are you planning on working on today?"});
+            work = work.first().content;
+        }
 
         const plan = await interaction.channel.awaitMessages({
             max: 1,
             time: 30_000,
             errors: ['time'],
         });
-
+        
         await interaction.user.send({content: "Got it, do you have any blockers? If not, please say: `no`."});
 
         const blockers = await interaction.channel.awaitMessages({
@@ -165,11 +185,10 @@ const handleUserStandup = async (interaction) => {
             time: 30_000,
             errors: ['time'],
         });
-        
 
         db.prepare(
             `INSERT INTO standup (user_id, work, plan, blockers) VALUES (?, ?, ?, ?)`
-        ).run(interaction.user.id, work.first().content, plan.first().content, blockers.first().content);
+        ).run(interaction.user.id, work, plan.first().content, blockers.first().content);
 
         await interaction.user.send({content: "Thanks for completing your standup, have a nice day!"});
     } catch (error) {
