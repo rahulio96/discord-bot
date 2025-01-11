@@ -191,6 +191,31 @@ const handleUserStandup = async (interaction) => {
         ).run(interaction.user.id, work, plan.first().content, blockers.first().content);
 
         await interaction.user.send({content: "Thanks for completing your standup, have a nice day!"});
+
+        // post standup in channel for server
+        await client.channels.cache.get(process.env.CHANNEL_ID).send({
+            content: "**Daily Standup Check-In:**",
+            embeds: [{
+                author: {
+                    name: interaction.user.displayName,
+                    icon_url: interaction.user.displayAvatarURL({ dynamic: true }),
+                },
+                color: 0X808080,
+            }, {
+                title: "**Previous Day's Progress**",
+                description: work,
+                color: 0X0096FF,
+            }, {
+                title: "**Today's Plan**",
+                description: plan.first().content,
+                color: 0X0096FF,
+            }, {
+                title: "**Blockers**",
+                description: blockers.first().content,
+                color: 0XFF0000,
+            }],
+        });
+
     } catch (error) {
         console.log(error);
     }   
