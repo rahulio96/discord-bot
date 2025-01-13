@@ -186,6 +186,8 @@ const handleUserStandup = async (interaction) => {
             errors: ['time'],
         });
 
+        const isNo = blockers.first().content.toLowerCase().trim() === "no";
+
         db.prepare(
             `INSERT INTO standup (user_id, work, plan, blockers) VALUES (?, ?, ?, ?)`
         ).run(interaction.user.id, work, plan.first().content, blockers.first().content);
@@ -209,11 +211,12 @@ const handleUserStandup = async (interaction) => {
                 title: "**Today's Plan**",
                 description: plan.first().content,
                 color: 0X0096FF,
-            }, {
-                title: "**Blockers**",
-                description: blockers.first().content,
-                color: 0XFF0000,
-            }],
+            }, ...(
+                !isNo ? [{
+                    title: "**Blockers**",
+                    description: blockers.first().content,
+                    color: 0XFF0000,
+            }] : [])],
         });
 
     } catch (error) {
