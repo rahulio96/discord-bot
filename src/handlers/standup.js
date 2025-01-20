@@ -79,7 +79,7 @@ const handleUserStandup = async (interaction, db, client) => {
             `INSERT INTO standup (user_id, work, plan, blockers) VALUES (?, ?, ?, ?)`
         ).run(interaction.user.id, work, plan.first().content, blockers.first().content);
 
-        await interaction.user.send({content: "Thanks for completing your standup, have a nice day!"});
+        await interaction.user.send({content: "Thanks for completing your standup, please make sure to update your Jira task status appropriately. Have a nice day! :raised_hands:"});
 
         // Post standup in channel for server
         // Only post blockers if the user didn't type "no"
