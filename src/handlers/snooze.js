@@ -28,15 +28,24 @@ const handleSnooze = async(interaction, snoozeTime, buttonLabel, isHours) => {
     });
 }
 
-// Ignore if the response isn't a number
+// Ignore if the response isn't a valid number
 const snoozeFilter = response => {
-    return !isNaN(parseFloat(response)) && isFinite(response);
+    if (!isNaN(parseFloat(response)) && isFinite(response)) {
+        const number = parseFloat(response);
+        if (number < 1 || number > 24) {
+            return false;
+        } else {
+            return true;
+        }
+    } else {
+        return false;
+    }
 } 
 
 // Handle a user's custom snooze option
 const handleCustomSnooze = async (interaction, buttonLabel) => {
     await buttonSelectResponse(interaction, buttonLabel, SNOOZE_PROMPT);
-    await interaction.user.send({embeds: [{ description: "Please enter the number of hours you would like to snooze:" }] });
+    await interaction.user.send({embeds: [{ description: "Please enter the number of hours (1-24) you would like to snooze:" }] });
 
     try {
         // Await one valid message from the user

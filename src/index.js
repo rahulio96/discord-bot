@@ -4,6 +4,8 @@ import { Client, GatewayIntentBits } from 'discord.js';
 import Database from "better-sqlite3";
 import { onInteractionCreate } from './client/interactionCreate.js';
 import { initDb, msgServerUsers } from './client/ready.js';
+import { registerCommands } from './commands/register-commands.js';
+import { handleCommands } from './commands/handleCommands.js';
 
 dotenv.config();
 
@@ -26,9 +28,9 @@ const client = new Client({
 client.login(process.env.DISCORD_TOKEN);
 
 client.on("ready", async () => {
-    console.log("Ready for action!");
-
+    await registerCommands();
     await initDb(db);
+    console.log("Ready for action!");
 
     // Send a message at a specific time every day
     schedule.scheduleJob(`${MINUTE} ${HOUR} * * *`, async () => {
@@ -48,8 +50,11 @@ client.on("ready", async () => {
 });
 
 client.on("interactionCreate", async (interaction) => {
-    if (!interaction.isButton()) {
-        return;
+    if (interaction.isChatInputCommand()) {
+        await handleCommands(interaction, db);
     }
-    await onInteractionCreate(interaction, interaction.customId, db, client);
+
+    if (interaction.isButton()) {
+        await onInteractionCreate(interaction, db, client);
+    }
 });
