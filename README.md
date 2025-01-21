@@ -7,7 +7,7 @@ A simple way to conduct daily standups for team members in an agile software dev
 
 ## How it works
 - Messages all team members at a certain time of day to fill out their standup
-- Includes options to snooze, skip, or continue standup
+- Includes buttons to snooze, skip, or continue with the standup update
 - The standup will prompt the user to fill out what they worked on the previous day, what their plan is for today, and if they have any blockers
 - Standup responses are posted in the server to keep other team members updated
 - User responses are stored to the database for future reference
