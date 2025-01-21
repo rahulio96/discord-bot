@@ -50,7 +50,7 @@ docker run -d \
   -e DISCORD_TOKEN="token" \
   -e GUILD_ID="discord_server_id" \
   -e CHANNEL_ID="discord_server_channel_id" \
-  -e BOT_ID = "discord_bot_id" \
+  -e BOT_ID="discord_bot_id" \
   -e HOUR="hour_of_notification" \
   -e MINUTE="minute_of_notification" \
   standup-bot
@@ -63,7 +63,7 @@ docker run -d `
   -e DISCORD_TOKEN="token" `
   -e GUILD_ID="discord_server_id" `
   -e CHANNEL_ID="discord_server_channel_id" `
-  -e BOT_ID = "discord_bot_id" `
+  -e BOT_ID="discord_bot_id" `
   -e HOUR="hour_of_notification" `
   -e MINUTE="minute_of_notification" `
   standup-bot
