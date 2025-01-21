@@ -1,11 +1,17 @@
+<p align="center">
+   <img src="./readme-assets/banner.png" alt="banner"/>
+</p>
+
 # Discord Standup Bot
 A simple way to conduct daily standups for team members in an agile software development project!
 
 ## How it works
-- Messages all team members at a certain time of day to fill out their standup.
-- Includes options to snooze, skip, or continue standup.
-- The standup will prompt the user to fill out what they worked on the previous day, what their plan is for today, and if they have any blockers.
-- Standup responses are saved to the database for future reference.
+- Messages all team members at a certain time of day to fill out their standup
+- Includes options to snooze, skip, or continue standup
+- The standup will prompt the user to fill out what they worked on the previous day, what their plan is for today, and if they have any blockers
+- Standup responses are posted in the server to keep other team members updated
+- User responses are stored to the database for future reference
+- Users can also force a standup for themselves by using the `/checkin` command
 
 ## Tech Stack
 - Node.js 
@@ -13,7 +19,7 @@ A simple way to conduct daily standups for team members in an agile software dev
 - Discord.js (to interact w/ Discord API)
 - SQLite
 - Docker
-- AWS
+- AWS (deployed to EC2 instance)
 
 ## Prerequisites
 - **Node.js**
@@ -25,7 +31,6 @@ A simple way to conduct daily standups for team members in an agile software dev
   - `HOUR`: The hour of the notification (24-hour format)
   - `MINUTE`: The minute of the notification
 - **Docker**: Only required to run in a Docker container
-
 
 ## Running Locally
 ```bash
